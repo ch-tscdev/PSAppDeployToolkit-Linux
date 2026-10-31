@@ -1,0 +1,49 @@
+#-----------------------------------------------------------------------------
+#
+# MARK: Get-ADTOperatingSystemInfo
+#
+# Linux port of PSAppDeployToolkit. The help, attributes and parameter block
+# are taken verbatim from the original module; implementation: Linux implementation.
+#
+#-----------------------------------------------------------------------------
+function Get-ADTOperatingSystemInfo
+{
+    <#
+    .SYNOPSIS
+        Gets information about the current computer's operating system.
+
+    .DESCRIPTION
+        The `Get-ADTOperatingSystemInfo` function gets information about the current computer's operating system, such as name, version, edition, and other information.
+
+    .INPUTS
+        None
+
+        You cannot pipe objects to this function.
+
+    .OUTPUTS
+        PSADT.DeviceManagement.OperatingSystemInfo
+
+        Returns an OperatingSystemInfo object containing the current computer's operating system information.
+
+    .EXAMPLE
+        Get-ADTOperatingSystemInfo
+
+        Gets an OperatingSystemInfo object containing the current computer's operating system information.
+
+    .NOTES
+        An active ADT session is NOT required to use this function.
+
+        Tags: psadt<br />
+        Website: https://psappdeploytoolkit.com<br />
+        Copyright: (C) 2026 PSAppDeployToolkit Team (Sean Lillis, Dan Cunningham, Muhammad Mashwani, Mitch Richters, Dan Gough).<br />
+        License: https://opensource.org/license/lgpl-3-0
+
+    .LINK
+        https://psappdeploytoolkit.com/docs/reference/functions/Get-ADTOperatingSystemInfo
+
+    .LINK
+        https://github.com/PSAppDeployToolkit/PSAppDeployToolkit/blob/main/modules/PSAppDeployToolkit/Public/Get-ADTOperatingSystemInfo.ps1
+    #>
+
+    return Get-ADTLinuxOperatingSystemInfo
+}

@@ -1,0 +1,60 @@
+#-----------------------------------------------------------------------------
+#
+# MARK: Reset-ADTDeferHistory
+#
+# Linux port of PSAppDeployToolkit. The help, attributes and parameter block
+# are taken verbatim from the original module; implementation: original (platform-neutral) code.
+#
+#-----------------------------------------------------------------------------
+function Reset-ADTDeferHistory
+{
+    <#
+    .SYNOPSIS
+        Reset the history of deferrals in the registry for the current application.
+
+    .DESCRIPTION
+        The `Reset-ADTDeferHistory` function resets the deferral history for the current application, in the registry.
+
+    .INPUTS
+        None
+
+        You cannot pipe objects to this function.
+
+    .OUTPUTS
+        None
+
+        This function does not return any objects.
+
+    .EXAMPLE
+        Reset-ADTDeferHistory
+
+    .NOTES
+        An active ADT session is required to use this function.
+
+        Tags: psadt<br />
+        Website: https://psappdeploytoolkit.com<br />
+        Copyright: (C) 2026 PSAppDeployToolkit Team (Sean Lillis, Dan Cunningham, Muhammad Mashwani, Mitch Richters, Dan Gough).<br />
+        License: https://opensource.org/license/lgpl-3-0
+
+    .LINK
+        https://psappdeploytoolkit.com/docs/reference/functions/Reset-ADTDeferHistory
+
+    .LINK
+        https://github.com/PSAppDeployToolkit/PSAppDeployToolkit/blob/main/modules/PSAppDeployToolkit/Public/Reset-ADTDeferHistory.ps1
+
+    #>
+
+    [CmdletBinding()]
+    param
+    (
+    )
+
+    try
+    {
+        (Get-ADTSession).ResetDeferHistory()
+    }
+    catch
+    {
+        $PSCmdlet.ThrowTerminatingError($_)
+    }
+}

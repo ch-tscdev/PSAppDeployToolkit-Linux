@@ -1,0 +1,128 @@
+#-----------------------------------------------------------------------------
+#
+# MARK: Set-ADTIniValue
+#
+# Linux port of PSAppDeployToolkit. The help, attributes and parameter block
+# are taken verbatim from the original module; implementation: Linux implementation.
+#
+#-----------------------------------------------------------------------------
+function Set-ADTIniValue
+{
+    <#
+    .SYNOPSIS
+        Opens an INI file and sets the value of the specified section and key.
+
+    .DESCRIPTION
+        The `Set-ADTIniValue` function opens an INI file and sets the value of the specified section and key.
+
+        Please note that the INI file provided cannot have a byte order mark (BOM) present as the underlying Win32 API cannot process it correctly.
+
+    .PARAMETER FilePath
+        Path to the INI file.
+
+    .PARAMETER Section
+        Section within the INI file.
+
+    .PARAMETER Key
+        Key within the section of the INI file.
+
+    .PARAMETER Value
+        Value for the key within the section of the INI file.
+
+    .PARAMETER Force
+        Specifies whether the INI file should be created if it does not already exist.
+
+    .INPUTS
+        None
+
+        You cannot pipe objects to this function.
+
+    .OUTPUTS
+        None
+
+        This function does not return any output.
+
+    .EXAMPLE
+        Set-ADTIniValue -FilePath "$env:ProgramFilesX86\IBM\Notes\notes.ini" -Section 'Notes' -Key 'KeyFileName' -Value 'MyFile.ID'
+
+        Sets the 'KeyFileName' key in the 'Notes' section of the 'notes.ini' file to 'MyFile.ID'.
+
+    .NOTES
+        An active ADT session is NOT required to use this function.
+
+        This function supports the `-WhatIf` and `-Confirm` parameters for testing changes before applying them.
+
+        Tags: psadt<br />
+        Website: https://psappdeploytoolkit.com<br />
+        Copyright: (C) 2026 PSAppDeployToolkit Team (Sean Lillis, Dan Cunningham, Muhammad Mashwani, Mitch Richters, Dan Gough).<br />
+        License: https://opensource.org/license/lgpl-3-0
+
+    .LINK
+        https://psappdeploytoolkit.com/docs/reference/functions/Set-ADTIniValue
+
+    .LINK
+        https://github.com/PSAppDeployToolkit/PSAppDeployToolkit/blob/main/modules/PSAppDeployToolkit/Public/Set-ADTIniValue.ps1
+    #>
+
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$FilePath,
+
+        [Parameter(Mandatory = $true)]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$Section,
+
+        [Parameter(Mandatory = $true)]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$Key,
+
+        [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [System.String]$Value,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$Force
+    )
+
+    begin
+    {
+        Initialize-ADTFunction -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    }
+
+    process
+    {
+        try
+        {
+            try
+            {
+                $FilePath = Resolve-ADTIniFilePath -FilePath $FilePath -AllowMissing:$Force
+                Write-ADTLogEntry -Message "$(if ($PSBoundParameters.ContainsKey('Value')) { 'Writing' } else { 'Removing' }) INI Key: [Section = $Section] [Key = $Key] [Value = $Value]."
+                if (!$PSCmdlet.ShouldProcess("$FilePath [$Section] $Key", 'Set INI value'))
+                {
+                    return
+                }
+                $ini = Read-ADTIniFile -LiteralPath $FilePath
+                if (!$ini.Contains($Section)) { $ini[$Section] = [ordered]@{} }
+                if ($null -eq $Value) { $ini[$Section].Remove($Key) } else { $ini[$Section][$Key] = $Value }
+                Write-ADTIniFile -LiteralPath $FilePath -Ini $ini
+            }
+            catch
+            {
+                Write-Error -ErrorRecord $_
+            }
+        }
+        catch
+        {
+            Invoke-ADTFunctionErrorHandler -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState -ErrorRecord $_
+        }
+    }
+
+    end
+    {
+        Complete-ADTFunction -Cmdlet $PSCmdlet
+    }
+}

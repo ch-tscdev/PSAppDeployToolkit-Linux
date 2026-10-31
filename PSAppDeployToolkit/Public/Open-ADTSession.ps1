@@ -1,0 +1,604 @@
+#-----------------------------------------------------------------------------
+#
+# MARK: Open-ADTSession
+#
+# Linux port of PSAppDeployToolkit. The help, attributes and parameter block
+# are taken verbatim from the original module; implementation: Linux implementation.
+#
+#-----------------------------------------------------------------------------
+function Open-ADTSession
+{
+    <#
+    .SYNOPSIS
+        Opens a new ADT session.
+
+    .DESCRIPTION
+        The `Open-ADTSession` function initializes and opens a new ADT session with the specified parameters. It handles the setup of the session environment and processes any callbacks defined for the session. If the session fails to open, it handles the error and closes the session if necessary.
+
+    .PARAMETER DeploymentType
+        Specifies the type of deployment.
+
+    .PARAMETER DeployMode
+        Specifies the deployment mode.
+
+    .PARAMETER SuppressRebootPassThru
+        Suppresses reboot pass-through.
+
+    .PARAMETER TerminalServerMode
+        Enables Terminal Server mode.
+
+    .PARAMETER DisableLogging
+        Disables logging for the session.
+
+    .PARAMETER AppVendor
+        Specifies the application vendor.
+
+    .PARAMETER AppName
+        Specifies the application name.
+
+    .PARAMETER AppVersion
+        Specifies the application version.
+
+    .PARAMETER AppArch
+        Specifies the application architecture.
+
+    .PARAMETER AppLang
+        Specifies the application language.
+
+    .PARAMETER AppRevision
+        Specifies the application revision.
+
+    .PARAMETER AppSuccessExitCodes
+        Specifies the application exit codes.
+
+    .PARAMETER AppRebootExitCodes
+        Specifies the application reboot codes.
+
+    .PARAMETER AppProcessesToClose
+        Specifies one or more processes that require closing to ensure a successful deployment. Provide either the bare process name (do not include the `.exe`), or the full path to a specific executable if you need to distinguish between two processes that share the same name (for example, two different vendors' `javaw.exe`). Wildcards (`*`) are supported in either form.
+
+        Specify custom descriptions like this: `@{ Name = 'winword'; Description = 'Microsoft Office Word' }, @{ Name = 'excel'; Description = 'Microsoft Office Excel' }`. The `Description` property is purely cosmetic - it does not filter or restrict which running processes are matched.
+
+    .PARAMETER AppScriptVersion
+        Specifies the application script version.
+
+    .PARAMETER AppScriptDate
+        Specifies the application script date.
+
+    .PARAMETER AppScriptAuthor
+        Specifies the application script author.
+
+    .PARAMETER DeployAppScriptFriendlyName
+        Specifies the friendly name of the deploy application script.
+
+    .PARAMETER DeployAppScriptVersion
+        Specifies the version of the deploy application script.
+
+    .PARAMETER DeployAppScriptParameters
+        Specifies the parameters for the deploy application script.
+
+    .PARAMETER DeployAppScriptSessionState
+        Defaults to `$PSCmdlet.SessionState` to get the caller's SessionState, so only required if you need to override this.
+
+    .PARAMETER ScriptDirectory
+        Specifies the base path for Files and SupportFiles.
+
+    .PARAMETER DirFiles
+        Specifies the override path to Files.
+
+    .PARAMETER DirSupportFiles
+        Specifies the override path to SupportFiles.
+
+    .PARAMETER DefaultMsiFile
+        Specifies the default MSI file.
+
+    .PARAMETER DefaultMstFile
+        Specifies the default MST file.
+
+    .PARAMETER DefaultMspFiles
+        Specifies the default MSP files.
+
+    .PARAMETER DisableDefaultMsiProcessList
+        Specifies that the zero-config MSI code should not gather process names from the MSI file.
+
+    .PARAMETER ForceMsiDetection
+        Specifies that MSI files should be detected and parsed during session initialization, irrespective of whether any App values are provided.
+
+    .PARAMETER ForceWimDetection
+        Specifies that WIM files should be detected and mounted during session initialization, irrespective of whether any App values are provided.
+
+    .PARAMETER NoSessionDetection
+        When DeployMode is not specified or is Auto, bypasses DeployMode adjustment when there's no logged on user session available.
+
+    .PARAMETER NoOobeDetection
+        When DeployMode is not specified or is Auto, bypasses DeployMode adjustment when the device hasn't completed the OOBE or a user ESP is active.
+
+    .PARAMETER NoProcessDetection
+        When DeployMode is not specified or is Auto, bypasses DeployMode adjustment when there's no processes to close in the specified `-AppProcessesToClose` list.
+
+    .PARAMETER ProcessInteractivityDetection
+        When DeployMode is not specified or is Auto, tests whether the process running this session is interactive or not and uses that as part of the DeployMode determination. This is mostly for ConfigMgr users who want silent deployments during Task Sequences, but interactive at other times.
+
+    .PARAMETER ExitWithMsiCodes
+        When specified, the session will always exit with 0 upon success and 3010 upon reboot required so Intune/ConfigMgr requires no specific adjustment.
+
+    .PARAMETER AllowWowProcess
+        When specified, allows the session to initialize within a Windows on Windows (WOW) process, such as a 32-bit PowerShell instance on a 64-bit operating system.
+
+    .PARAMETER RequireAdmin
+        Specifies that this deployment requires administrative permissions.
+
+    .PARAMETER PassThru
+        Passes the session object through the pipeline.
+
+    .PARAMETER InstallTitle
+        Specifies an override for the default-generated install title.
+
+    .PARAMETER InstallName
+        Specifies an override for the default-generated install name.
+
+    .PARAMETER LogName
+        Specifies an override for the default-generated log file name.
+
+    .PARAMETER AdditionalEnvironmentVariables
+        A dictionary of key/value pairs to inject into the generated environment table. This only applies if this function initializes the module also.
+
+    .PARAMETER SessionClass
+        Specifies an override for PSAppDeployToolkit.Foundation.DeploymentSession class. Use this if you're deriving a class inheriting off PSAppDeployToolkit's base.
+
+    .PARAMETER UnboundArguments
+        Captures any additional arguments passed to the function. Do not directly use this parameter on the command line or in your scripts.
+
+    .INPUTS
+        None
+
+        You cannot pipe objects to this function.
+
+    .OUTPUTS
+        None
+
+        By default, this function returns no output.
+
+    .OUTPUTS
+        PSAppDeployToolkit.Foundation.DeploymentSession
+
+        This function returns the session object if `-PassThru` is specified.
+
+    .EXAMPLE
+        Open-ADTSession -DeploymentType "Install" -DeployMode "Interactive"
+
+        Opens a new ADT session with the specified parameters.
+
+    .NOTES
+        An active ADT session is NOT required to use this function.
+
+        Tags: psadt<br />
+        Website: https://psappdeploytoolkit.com<br />
+        Copyright: (C) 2026 PSAppDeployToolkit Team (Sean Lillis, Dan Cunningham, Muhammad Mashwani, Mitch Richters, Dan Gough).<br />
+        License: https://opensource.org/license/lgpl-3-0
+
+    .LINK
+        https://psappdeploytoolkit.com/docs/reference/functions/Open-ADTSession
+
+    .LINK
+        https://github.com/PSAppDeployToolkit/PSAppDeployToolkit/blob/main/modules/PSAppDeployToolkit/Public/Open-ADTSession.ps1
+    #>
+
+    [CmdletBinding(DefaultParameterSetName = 'None')]
+    [OutputType([PSAppDeployToolkit.Foundation.DeploymentSession])]
+    param
+    (
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Parameter')]
+        [ValidateNotNullOrEmpty()]
+        [PSAppDeployToolkit.Foundation.DeploymentType]$DeploymentType,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Parameter')]
+        [ValidateNotNullOrEmpty()]
+        [PSAppDeployToolkit.Foundation.DeployMode]$DeployMode,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Parameter')]
+        [System.Management.Automation.SwitchParameter]$SuppressRebootPassThru,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Parameter')]
+        [System.Management.Automation.SwitchParameter]$TerminalServerMode,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Parameter')]
+        [System.Management.Automation.SwitchParameter]$DisableLogging,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$AppVendor,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$AppName,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$AppVersion,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$AppArch,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$AppLang,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$AppRevision,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [System.Int32[]]$AppSuccessExitCodes,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [System.Int32[]]$AppRebootExitCodes,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [PSAppDeployToolkit.Attributes.ValidateUnique()]
+        [PSADT.ProcessManagement.ProcessDefinition[]]$AppProcessesToClose,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [ValidateNotNullOrEmpty()]
+        [System.Version]$AppScriptVersion,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [ValidateNotNullOrEmpty()]
+        [System.DateTime]$AppScriptDate,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$AppScriptAuthor,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$DeployAppScriptFriendlyName,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [ValidateNotNullOrEmpty()]
+        [System.Version]$DeployAppScriptVersion,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [ValidateNotNullOrEmpty()]
+        [System.Collections.Generic.IReadOnlyDictionary[System.String, System.Object]]$DeployAppScriptParameters,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [Alias('SessionState')]
+        [System.Management.Automation.SessionState]$DeployAppScriptSessionState,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateScript({
+                if ([System.String]::IsNullOrWhiteSpace($_))
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName ScriptDirectory -ProvidedValue $_ -ExceptionMessage 'The specified input is null or empty.'))
+                }
+                if (!(Test-Path -LiteralPath $_ -PathType Container))
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName ScriptDirectory -ProvidedValue $_ -ExceptionMessage 'The specified directory does not exist.'))
+                }
+                return $_
+            })]
+        [PSAppDeployToolkit.Attributes.ValidateUnique()]
+        [System.String[]]$ScriptDirectory,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateScript({
+                if ([System.String]::IsNullOrWhiteSpace($_))
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName DirFiles -ProvidedValue $_ -ExceptionMessage 'The specified input is null or empty.'))
+                }
+                if (!(Test-Path -LiteralPath $_ -PathType Container))
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName DirFiles -ProvidedValue $_ -ExceptionMessage 'The specified directory does not exist.'))
+                }
+                return $_
+            })]
+        [System.String]$DirFiles,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateScript({
+                if ([System.String]::IsNullOrWhiteSpace($_))
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName DirSupportFiles -ProvidedValue $_ -ExceptionMessage 'The specified input is null or empty.'))
+                }
+                if (!(Test-Path -LiteralPath $_ -PathType Container))
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName DirSupportFiles -ProvidedValue $_ -ExceptionMessage 'The specified directory does not exist.'))
+                }
+                return $_
+            })]
+        [System.String]$DirSupportFiles,
+
+        [Parameter(Mandatory = $false)]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$DefaultMsiFile,
+
+        [Parameter(Mandatory = $false)]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$DefaultMstFile,
+
+        [Parameter(Mandatory = $false)]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [PSAppDeployToolkit.Attributes.ValidateUnique()]
+        [System.String[]]$DefaultMspFiles,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$DisableDefaultMsiProcessList,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$ForceMsiDetection,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$ForceWimDetection,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'NoSessionDetection')]
+        [System.Management.Automation.SwitchParameter]$NoSessionDetection,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$NoOobeDetection,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$NoProcessDetection,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'ProcessInteractivityDetection')]
+        [System.Management.Automation.SwitchParameter]$ProcessInteractivityDetection,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$ExitWithMsiCodes,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$AllowWowProcess,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$RequireAdmin,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$PassThru,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$InstallTitle,
+
+        [Parameter(Mandatory = $false, HelpMessage = 'Frontend Variable')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$InstallName,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateScript({
+                if ([System.String]::IsNullOrWhiteSpace($_))
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName LogName -ProvidedValue $_ -ExceptionMessage 'The specified input is null or empty.'))
+                }
+                if (![PSAppDeployToolkit.Logging.LogUtilities]::LogFileNameRegex.IsMatch($_))
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName LogName -ProvidedValue $_ -ExceptionMessage "The specified value does not match [$([PSAppDeployToolkit.Logging.LogUtilities]::LogFileNameRegex)]."))
+                }
+                return $_
+            })]
+        [System.String]$LogName,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [System.Collections.IDictionary]$AdditionalEnvironmentVariables,
+
+        [Parameter(Mandatory = $false, DontShow = $true)]
+        [ValidateScript({
+                if ($null -eq $_)
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName SessionClass -ProvidedValue $_ -ExceptionMessage 'The specified input is null or empty.'))
+                }
+                if (![PSAppDeployToolkit.Foundation.DeploymentSession].IsAssignableFrom($_))
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName SessionClass -ProvidedValue $_ -ExceptionMessage 'The specified type is not derived from the DeploymentSession base class.'))
+                }
+                return $_
+            })]
+        [System.Type]$SessionClass = [PSAppDeployToolkit.Foundation.DeploymentSession],
+
+        [Parameter(Mandatory = $false, ValueFromRemainingArguments = $true, DontShow = $true)]
+        [AllowNull()][AllowEmptyCollection()]
+        [System.Collections.Generic.IReadOnlyList[System.Object]]$UnboundArguments
+    )
+
+    begin
+    {
+        # Make this function stop on any error and ensure the caller doesn't override ErrorAction.
+        $PSBoundParameters.ErrorAction = [System.Management.Automation.ActionPreference]::Stop
+        Initialize-ADTFunction -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+        # Determine whether we're being called from a script file (exit on close) or interactively/nested (no exit).
+        $callerInvocation = Get-PSCallStack | Select-Object -Skip 1 | Select-Object -First 1 | & { process { $_.InvocationInfo } }
+        $noExitOnClose = $callerInvocation -and !$callerInvocation.MyCommand.CommandType.Equals([System.Management.Automation.CommandTypes]::ExternalScript) -and !([System.Environment]::GetCommandLineArgs() -eq '-NonInteractive')
+
+        # Set up the SessionState if one wasn't provided.
+        if (!$PSBoundParameters.ContainsKey('DeployAppScriptSessionState'))
+        {
+            $PSBoundParameters.DeployAppScriptSessionState = $DeployAppScriptSessionState = $PSCmdlet.SessionState
+        }
+
+        # Set up the ScriptDirectory if one wasn't provided.
+        if (!$PSBoundParameters.ContainsKey('ScriptDirectory'))
+        {
+            [System.String[]]$PSBoundParameters.ScriptDirectory = $ScriptDirectory = if (!(Test-ADTModuleInitialized))
+            {
+                if (![System.String]::IsNullOrWhiteSpace(($scriptRoot = $DeployAppScriptSessionState.PSVariable.GetValue('PSScriptRoot', $null))))
+                {
+                    $scriptRoot
+                }
+                else
+                {
+                    $ExecutionContext.SessionState.Path.CurrentLocation.Path
+                }
+            }
+            else
+            {
+                (Get-ADTModuleDirectories).Script
+            }
+        }
+
+        # Set up DirFiles/DirSupportFiles if one wasn't specified.
+        if (!$PSBoundParameters.ContainsKey('DirFiles'))
+        {
+            foreach ($directory in $PSBoundParameters.ScriptDirectory)
+            {
+                if ([System.IO.Directory]::Exists(($directory = Join-Path -Path $directory -ChildPath Files)))
+                {
+                    $PSBoundParameters.DirFiles = $DirFiles = $directory
+                }
+            }
+        }
+        if (!$PSBoundParameters.ContainsKey('DirSupportFiles'))
+        {
+            foreach ($directory in $PSBoundParameters.ScriptDirectory)
+            {
+                if ([System.IO.Directory]::Exists(($directory = Join-Path -Path $directory -ChildPath SupportFiles)))
+                {
+                    $PSBoundParameters.DirSupportFiles = $DirSupportFiles = $directory
+                }
+            }
+        }
+
+        # Remove any values from $PSBoundParameters that are null (empty strings, mostly).
+        $null = ($PSBoundParameters.GetEnumerator().Where({ !(Out-ADTString -InputObject $_.Value) })).ForEach({ $PSBoundParameters.Remove($_.Key) })
+    }
+
+    process
+    {
+        # If this function is being called from the console, clear all previous sessions and go for full re-initialization.
+        if ($callerInvocation -and [System.String]::IsNullOrWhiteSpace($callerInvocation.InvocationName) -and [System.String]::IsNullOrWhiteSpace($callerInvocation.Line))
+        {
+            Reset-ADTModuleState -Force
+        }
+        $firstSession = !(Test-ADTSessionActive)
+
+        # Perform pre-opening tasks.
+        $initialized = $false
+        $errRecord = $null
+        try
+        {
+            if ($firstSession)
+            {
+                if (($initialized = !(Test-ADTModuleInitialized)))
+                {
+                    $iamParams = @{ ScriptDirectory = $PSBoundParameters.ScriptDirectory }
+                    if ($PSBoundParameters.ContainsKey('AdditionalEnvironmentVariables'))
+                    {
+                        $iamParams.Add('AdditionalEnvironmentVariables', $AdditionalEnvironmentVariables)
+                    }
+                    Initialize-ADTModule @iamParams
+                }
+                foreach ($callback in (Get-ADTModuleCallback -Hookpoint OnStart | & { process { return $_ } }))
+                {
+                    & $callback
+                }
+            }
+            foreach ($callback in (Get-ADTModuleCallback -Hookpoint PreOpen | & { process { return $_ } }))
+            {
+                & $callback
+            }
+        }
+        catch
+        {
+            $PSCmdlet.ThrowTerminatingError(($errRecord = $_))
+        }
+        finally
+        {
+            if ($errRecord -and $initialized)
+            {
+                Reset-ADTModuleState
+            }
+        }
+
+        # Instantiate the new session.
+        try
+        {
+            try
+            {
+                $adtSession = New-ADTDeploymentSession -Parameters $PSBoundParameters -NoExitOnClose:$noExitOnClose -SessionClass $SessionClass
+                (Get-ADTDeploymentSessions).Add($adtSession)
+                Initialize-ADTDeploymentSession -Session $adtSession -Parameters $PSBoundParameters
+            }
+            catch
+            {
+                Write-Error -ErrorRecord $_
+            }
+        }
+        catch
+        {
+            Invoke-ADTFunctionErrorHandler -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState -ErrorRecord ($errRecord = $_) -LogMessage "Failure occurred while instantiating a new deployment session."
+        }
+        finally
+        {
+            if ($errRecord)
+            {
+                if ((Test-ADTSessionActive) -and !(Get-ADTSession).IsClosed())
+                {
+                    Close-ADTSession -ExitCode $(if ($errRecord.Exception -is [System.NotSupportedException]) { (Get-ADTConfig).UI.DeferExitCode } else { 60008 }) -NoShellExit:$noExitOnClose
+                }
+                else
+                {
+                    Exit-ADTInvocation -ExitCode 60008 -NoShellExit:$noExitOnClose
+                }
+            }
+        }
+
+        # Perform post-opening tasks.
+        try
+        {
+            try
+            {
+                if ($PSBoundParameters.ContainsKey('UnboundArguments') -and $SessionClass.Equals([PSAppDeployToolkit.Foundation.DeploymentSession]))
+                {
+                    (Convert-ADTValuesFromRemainingArguments -RemainingArguments $UnboundArguments).GetEnumerator() | & {
+                        begin
+                        {
+                            $adtSessionProps = $adtSession.PSObject.Properties
+                        }
+                        process
+                        {
+                            $adtSessionProps.Add([System.Management.Automation.PSNoteProperty]::new($_.Key, $_.Value))
+                        }
+                    }
+                }
+                foreach ($callback in (Get-ADTModuleCallback -Hookpoint PostOpen | & { process { return $_ } }))
+                {
+                    & $callback
+                }
+                if ($firstSession)
+                {
+                    Export-ADTEnvironmentTableToSessionState -SessionState $DeployAppScriptSessionState
+                }
+                $adtSession.InstallPhase = 'Execution'
+                if ($PassThru)
+                {
+                    return $adtSession
+                }
+            }
+            catch
+            {
+                Write-Error -ErrorRecord $_ -CategoryTargetName 60008 -CategoryTargetType ([System.Int32].Name)
+            }
+        }
+        catch
+        {
+            Invoke-ADTFunctionErrorHandler -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState -ErrorRecord ($errRecord = $_) -LogMessage "Failure occurred following new deployment session instantiation."
+        }
+        finally
+        {
+            if ($errRecord)
+            {
+                Close-ADTSession -ExitCode 60008
+            }
+        }
+    }
+
+    end
+    {
+        Complete-ADTFunction -Cmdlet $PSCmdlet
+    }
+}

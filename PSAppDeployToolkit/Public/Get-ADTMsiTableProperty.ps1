@@ -1,0 +1,175 @@
+#-----------------------------------------------------------------------------
+#
+# MARK: Get-ADTMsiTableProperty
+#
+# Linux port of PSAppDeployToolkit. The help, attributes and parameter block
+# are taken verbatim from the original module; implementation: not supported on Linux (throws PlatformNotSupportedException).
+#
+#-----------------------------------------------------------------------------
+function Get-ADTMsiTableProperty
+{
+    <#
+    .SYNOPSIS
+        Get all of the properties from a Windows Installer database table or the Summary Information stream and return as a custom object.
+
+    .DESCRIPTION
+        The `Get-ADTMsiTableProperty` function reads all of the properties from a Windows Installer database table or the Summary Information stream.
+
+    .PARAMETER LiteralPath
+        The fully qualified path to an database file. Supports .msi and .msp files.
+
+    .PARAMETER TransformPath
+        The fully qualified path to a list of MST file(s) which should be applied to the MSI file.
+
+    .PARAMETER Table
+        The name of the the MSI table from which all of the properties must be retrieved.
+
+    .PARAMETER TablePropertyNameColumnNum
+        Specify the table column number which contains the name of the properties.
+
+    .PARAMETER TablePropertyValueColumnNum
+        Specify the table column number which contains the value of the properties.
+
+    .PARAMETER NoClobber
+        Fails when the name column holds the same value on more than one row, rather than letting the later row replace the earlier one.
+
+        Names are read with their surrounding whitespace removed, so two rows differing only by that arrive as one. Which column the names are read from is also yours to choose, and nothing requires the one you choose to hold a value only once. Either way the default keeps the last row read, which is what this function has always done; use this to be told instead.
+
+    .PARAMETER GetSummaryInformation
+        Retrieves the Summary Information for the Windows Installer database.
+
+        Summary Information property descriptions: https://learn.microsoft.com/en-us/windows/win32/msi/summary-property-descriptions
+
+    .INPUTS
+        None
+
+        You cannot pipe objects to this function.
+
+    .OUTPUTS
+        System.Collections.Generic.IReadOnlyDictionary[System.String, System.Object]
+
+        Returns a readonly dictionary with the properties as key/value pairs.
+
+    .OUTPUTS
+        PSADT.WindowsInstaller.MsiSummaryInfo
+
+        When the `-GetSummaryInformation` parameter is specified, this function returns a MsiSummaryInfo object with information about the MSI:
+        - CodePage
+        - Title
+        - Subject
+        - Author
+        - Keywords
+        - Comments
+        - Template
+        - LastSavedby
+        - RevisionNumber
+        - LastPrinted
+        - CreateTimeDate
+        - LastSaveTimeDate
+        - PageCount
+        - WordCount
+        - CharacterCount
+        - CreatingApplication
+        - Security
+
+    .EXAMPLE
+        Get-ADTMsiTableProperty -LiteralPath 'C:\Package\AppDeploy.msi' -TransformPath 'C:\Package\AppDeploy.mst'
+
+        Retrieve all of the properties from the default 'Property' table.
+
+    .EXAMPLE
+        (Get-ADTMsiTableProperty -LiteralPath 'C:\Package\AppDeploy.msi' -TransformPath 'C:\Package\AppDeploy.mst' -Table 'Property').ProductCode
+
+        Retrieve all of the properties from the 'Property' table, then retrieves just the 'ProductCode' member.
+
+    .EXAMPLE
+        Get-ADTMsiTableProperty -LiteralPath 'C:\Package\AppDeploy.msi' -GetSummaryInformation
+
+        Retrieve the Summary Information for the Windows Installer database.
+
+    .NOTES
+        An active ADT session is NOT required to use this function.
+
+        Tags: psadt<br />
+        Website: https://psappdeploytoolkit.com<br />
+        Copyright: (C) 2026 PSAppDeployToolkit Team (Sean Lillis, Dan Cunningham, Muhammad Mashwani, Mitch Richters, Dan Gough).<br />
+        License: https://opensource.org/license/lgpl-3-0
+
+    .LINK
+        https://psappdeploytoolkit.com/docs/reference/functions/Get-ADTMsiTableProperty
+
+    .LINK
+        https://github.com/PSAppDeployToolkit/PSAppDeployToolkit/blob/main/modules/PSAppDeployToolkit/Public/Get-ADTMsiTableProperty.ps1
+    #>
+
+    [CmdletBinding(DefaultParameterSetName = 'TableInfo')]
+    [OutputType([System.Collections.Generic.IReadOnlyDictionary[System.String, System.Object]])]
+    [OutputType([PSADT.WindowsInstaller.MsiSummaryInfo])]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [ValidateScript({
+                if (!(Test-Path -LiteralPath $_ -PathType Leaf))
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName Path -ProvidedValue $_ -ExceptionMessage 'The specified path does not exist.'))
+                }
+                return ![System.String]::IsNullOrWhiteSpace($_)
+            })]
+        [Alias('Path', 'PSPath')]
+        [System.String]$LiteralPath,
+
+        [Parameter(Mandatory = $false)]
+        [PSAppDeployToolkit.Attributes.ValidateUnique()]
+        [ValidateScript({
+                if (!(Test-Path -LiteralPath $_ -PathType Leaf))
+                {
+                    $PSCmdlet.ThrowTerminatingError((New-ADTValidateScriptErrorRecord -ParameterName TransformPath -ProvidedValue $_ -ExceptionMessage 'The specified path does not exist.'))
+                }
+                return ![System.String]::IsNullOrWhiteSpace($_)
+            })]
+        [System.String[]]$TransformPath,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'TableInfo')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [PSDefaultValue(Help = 'MSI file: "Property"; MSP file: "MsiPatchMetadata"')]
+        [System.String]$Table,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'TableInfo')]
+        [ValidateNotNullOrEmpty()]
+        [PSDefaultValue(Help = 'MSI file: 1; MSP file: 2')]
+        [System.Nullable[System.UInt32]]$TablePropertyNameColumnNum,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'TableInfo')]
+        [ValidateNotNullOrEmpty()]
+        [PSDefaultValue(Help = 'MSI file: 2; MSP file: 3')]
+        [System.Nullable[System.UInt32]]$TablePropertyValueColumnNum,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'TableInfo')]
+        [System.Management.Automation.SwitchParameter]$NoClobber,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'SummaryInfo')]
+        [System.Management.Automation.SwitchParameter]$GetSummaryInformation
+    )
+
+    begin
+    {
+        Initialize-ADTFunction -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    }
+
+    process
+    {
+        try
+        {
+            Invoke-ADTLinuxNotSupported -Cmdlet $PSCmdlet
+        }
+        catch
+        {
+            Invoke-ADTFunctionErrorHandler -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState -ErrorRecord $_
+        }
+    }
+
+    end
+    {
+        Complete-ADTFunction -Cmdlet $PSCmdlet
+    }
+}

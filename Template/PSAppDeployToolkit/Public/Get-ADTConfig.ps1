@@ -1,0 +1,66 @@
+#-----------------------------------------------------------------------------
+#
+# MARK: Get-ADTConfig
+#
+# Linux port of PSAppDeployToolkit. The help, attributes and parameter block
+# are taken verbatim from the original module; implementation: original (platform-neutral) code.
+#
+#-----------------------------------------------------------------------------
+function Get-ADTConfig
+{
+    <#
+    .SYNOPSIS
+        Retrieves the configuration data for the PSAppDeployToolkit module.
+
+    .DESCRIPTION
+        The `Get-ADTConfig` function retrieves the configuration data for the PSAppDeployToolkit module. This function ensures that the PSAppDeployToolkit module has been initialized before attempting to retrieve the configuration data. If the module is not initialized, it throws an error.
+
+    .INPUTS
+        None
+
+        You cannot pipe objects to this function.
+
+    .OUTPUTS
+        System.Collections.Hashtable
+
+        Returns the configuration data as a hashtable.
+
+    .EXAMPLE
+        $config = Get-ADTConfig
+
+        This example retrieves the configuration data for the PSAppDeployToolkit module and stores it in the `$config` variable.
+
+    .NOTES
+        The module must be initialized via `Initialize-ADTModule` prior to calling this function.
+
+        An active ADT session is NOT required to use this function.
+
+        Tags: psadt<br />
+        Website: https://psappdeploytoolkit.com<br />
+        Copyright: (C) 2026 PSAppDeployToolkit Team (Sean Lillis, Dan Cunningham, Muhammad Mashwani, Mitch Richters, Dan Gough).<br />
+        License: https://opensource.org/license/lgpl-3-0
+
+    .LINK
+        https://psappdeploytoolkit.com/docs/reference/functions/Get-ADTConfig
+
+    .LINK
+        https://github.com/PSAppDeployToolkit/PSAppDeployToolkit/blob/main/modules/PSAppDeployToolkit/Public/Get-ADTConfig.ps1
+    #>
+
+    [CmdletBinding()]
+    [OutputType([System.Collections.Hashtable])]
+    param
+    (
+    )
+
+    # Return the config database if initialized. Rethrown from here so the caller's own line is
+    # what the error reports, rather than a line inside this module that means nothing to them.
+    try
+    {
+        return (Get-ADTModuleState).Config
+    }
+    catch
+    {
+        $PSCmdlet.ThrowTerminatingError($_)
+    }
+}

@@ -1,0 +1,124 @@
+#-----------------------------------------------------------------------------
+#
+# MARK: Send-ADTKeys
+#
+# Linux port of PSAppDeployToolkit. The help, attributes and parameter block
+# are taken verbatim from the original module; implementation: not supported on Linux (throws PlatformNotSupportedException).
+#
+#-----------------------------------------------------------------------------
+function Send-ADTKeys
+{
+    <#
+    .SYNOPSIS
+        Send a sequence of keys to one or more application windows.
+
+    .DESCRIPTION
+        The `Send-ADTKeys` function sends a sequence of keys to one or more application windows. If the window title searched for returns more than one window, then all of them will receive the sent keys.
+
+    .PARAMETER WindowTitle
+        The title of the application window to search for using regex matching.
+
+    .PARAMETER WindowHandle
+        Send keys to a specific window where the Window Handle is already known.
+
+    .PARAMETER Keys
+        The sequence of keys to send. Info on Key input at: http://msdn.microsoft.com/en-us/library/System.Windows.Forms.SendKeys(v=vs.100).aspx
+
+    .PARAMETER WaitDuration
+        An optional amount of time to wait after the sending of the keys. Accepts TimeSpan objects, but also interprets numerical values as seconds.
+
+    .INPUTS
+        None
+
+        You cannot pipe objects to this function.
+
+    .OUTPUTS
+        None
+
+        This function does not return any objects.
+
+    .EXAMPLE
+        Send-ADTKeys -WindowTitle 'foobar - Notepad' -Keys 'Hello world'
+
+        Send the sequence of keys "Hello world" to the application titled "foobar - Notepad".
+
+    .EXAMPLE
+        Send-ADTKeys -WindowTitle 'foobar - Notepad' -Keys 'Hello world' -WaitDuration 00:00:05
+
+        Send the sequence of keys "Hello world" to the application titled "foobar - Notepad" and wait 5 seconds.
+
+    .EXAMPLE
+        Send-ADTKeys -WindowTitle 'foobar - Notepad' -Keys 'Hello world' -WaitDuration (New-TimeSpan -Seconds 5)
+
+        Send the sequence of keys "Hello world" to the application titled "foobar - Notepad" and wait 5 seconds.
+
+    .EXAMPLE
+        Send-ADTKeys -WindowHandle ([IntPtr]17368294) -Keys 'Hello World'
+
+        Send the sequence of keys "Hello World" to the application with a Window Handle of '17368294'.
+
+    .NOTES
+        An active ADT session is NOT required to use this function.
+
+        Tags: psadt<br />
+        Website: https://psappdeploytoolkit.com<br />
+        Copyright: (C) 2026 PSAppDeployToolkit Team (Sean Lillis, Dan Cunningham, Muhammad Mashwani, Mitch Richters, Dan Gough).<br />
+        License: https://opensource.org/license/lgpl-3-0
+
+    .LINK
+        https://learn.microsoft.com/en-us/dotnet/api/system.windows.forms.sendkeys
+
+    .LINK
+        https://psappdeploytoolkit.com/docs/reference/functions/Send-ADTKeys
+
+    .LINK
+        https://github.com/PSAppDeployToolkit/PSAppDeployToolkit/blob/main/modules/PSAppDeployToolkit/Public/Send-ADTKeys.ps1
+    #>
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'WindowTitle', Justification = "This parameter is used within delegates that PSScriptAnalyzer has no visibility of. See https://github.com/PowerShell/PSScriptAnalyzer/issues/1472 for more details.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'WindowHandle', Justification = "This parameter is used within delegates that PSScriptAnalyzer has no visibility of. See https://github.com/PowerShell/PSScriptAnalyzer/issues/1472 for more details.")]
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true, ParameterSetName = 'WindowTitle')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$WindowTitle,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'WindowHandle')]
+        [ValidateNotNullOrEmpty()]
+        [System.Nullable[System.IntPtr]]$WindowHandle,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'WindowTitle')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'WindowHandle')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$Keys,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'WindowTitle')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'WindowHandle')]
+        [PSAppDeployToolkit.Attributes.TimeSpanTransformation()]
+        [ValidateNotNullOrEmpty()]
+        [System.TimeSpan]$WaitDuration
+    )
+
+    begin
+    {
+        Initialize-ADTFunction -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    }
+
+    process
+    {
+        try
+        {
+            Invoke-ADTLinuxNotSupported -Cmdlet $PSCmdlet
+        }
+        catch
+        {
+            Invoke-ADTFunctionErrorHandler -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState -ErrorRecord $_
+        }
+    }
+
+    end
+    {
+        Complete-ADTFunction -Cmdlet $PSCmdlet
+    }
+}

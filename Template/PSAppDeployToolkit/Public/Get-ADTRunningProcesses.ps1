@@ -1,0 +1,72 @@
+#-----------------------------------------------------------------------------
+#
+# MARK: Get-ADTRunningProcesses
+#
+# Linux port of PSAppDeployToolkit. The help, attributes and parameter block
+# are taken verbatim from the original module; implementation: original (platform-neutral) code.
+#
+#-----------------------------------------------------------------------------
+function Get-ADTRunningProcesses
+{
+    <#
+    .SYNOPSIS
+        Gets the processes that are running from a list of process objects.
+
+    .DESCRIPTION
+        The `Get-ADTRunningProcesses` function returns the processes that are running from the provided list of process objects.
+
+    .PARAMETER ProcessDefinition
+        One or more process objects to search for. Provide either the bare process name (do not include the `.exe`), or the full path to a specific executable if you need to distinguish between two processes that share the same name (for example, two different vendors' `javaw.exe`). Wildcards (`*`) are supported in either form.
+        Specify custom descriptions like this: `@{ Name = 'winword'; Description = 'Microsoft Office Word' }, @{ Name = 'excel'; Description = 'Microsoft Office Excel' }`. The `Description` property is purely cosmetic - it does not filter or restrict which running processes are matched.
+
+    .INPUTS
+        None.
+
+        You cannot pipe objects to this function.
+
+    .OUTPUTS
+        PSADT.ProcessManagement.RunningProcessInfo
+
+        Returns one or more RunningProcess objects representing each running process.
+
+    .EXAMPLE
+        Get-ADTRunningProcesses -ProcessDefinition $processObjects
+
+        Returns a list of running processes. If nothing is found, nothing will be returned.
+
+    .NOTES
+        An active ADT session is NOT required to use this function.
+
+        Tags: psadt<br />
+        Website: https://psappdeploytoolkit.com<br />
+        Copyright: (C) 2026 PSAppDeployToolkit Team (Sean Lillis, Dan Cunningham, Muhammad Mashwani, Mitch Richters, Dan Gough).<br />
+        License: https://opensource.org/license/lgpl-3-0
+
+    .LINK
+        https://psappdeploytoolkit.com/docs/reference/functions/Get-ADTRunningProcesses
+
+    .LINK
+        https://github.com/PSAppDeployToolkit/PSAppDeployToolkit/blob/main/modules/PSAppDeployToolkit/Public/Get-ADTRunningProcesses.ps1
+    #>
+
+    [CmdletBinding()]
+    [OutputType([PSADT.ProcessManagement.RunningProcessInfo])]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [Alias('ProcessObjects')]
+        [ValidateNotNullOrEmpty()]
+        [PSAppDeployToolkit.Attributes.ValidateUnique()]
+        [PSADT.ProcessManagement.ProcessDefinition[]]$ProcessDefinition
+    )
+
+    # Process provided process objects and return any output.
+    Write-ADTLogEntry -Message "Checking for running processes: ['$([System.String]::Join("', '", $ProcessDefinition.Name))']"
+    if (!($runningProcesses = [PSADT.ProcessManagement.RunningProcessInfo]::Get($ProcessDefinition)))
+    {
+        Write-ADTLogEntry -Message 'Specified processes are not running.'
+        return
+    }
+    Write-ADTLogEntry -Message "The following processes are running: ['$([System.String]::Join("', '", ($runningProcesses.Process.ProcessName | Select-ADTUniqueObject)))']."
+    return $runningProcesses
+}

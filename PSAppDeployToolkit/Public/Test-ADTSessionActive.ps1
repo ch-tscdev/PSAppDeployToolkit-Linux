@@ -1,0 +1,49 @@
+#-----------------------------------------------------------------------------
+#
+# MARK: Test-ADTSessionActive
+#
+# Linux port of PSAppDeployToolkit. The help, attributes and parameter block
+# are taken verbatim from the original module; implementation: original (platform-neutral) code.
+#
+#-----------------------------------------------------------------------------
+function Test-ADTSessionActive
+{
+    <#
+    .SYNOPSIS
+        Checks if there is an active ADT session.
+
+    .DESCRIPTION
+        The `Test-ADTSessionActive` function checks if there is an active ADT (App Deploy Toolkit) session by retrieving the module data and returning the count of active sessions.
+
+    .INPUTS
+        None
+
+        You cannot pipe objects to this function.
+
+    .OUTPUTS
+        System.Boolean
+
+        Returns `$true` if there is at least one active session, otherwise `$false`.
+
+    .EXAMPLE
+        Test-ADTSessionActive
+
+        Checks if there is an active ADT session and returns `$true` or `$false`.
+
+    .NOTES
+        An active ADT session is NOT required to use this function.
+
+        Tags: psadt<br />
+        Website: https://psappdeploytoolkit.com<br />
+        Copyright: (C) 2026 PSAppDeployToolkit Team (Sean Lillis, Dan Cunningham, Muhammad Mashwani, Mitch Richters, Dan Gough).<br />
+        License: https://opensource.org/license/lgpl-3-0
+
+    .LINK
+        https://psappdeploytoolkit.com/docs/reference/functions/Test-ADTSessionActive
+
+    .LINK
+        https://github.com/PSAppDeployToolkit/PSAppDeployToolkit/blob/main/modules/PSAppDeployToolkit/Public/Test-ADTSessionActive.ps1
+    #>
+
+    return (Test-ADTModuleInitialized) -and !!(Get-ADTDeploymentSessions).Count
+}

@@ -1,0 +1,84 @@
+#-----------------------------------------------------------------------------
+#
+# MARK: Clear-ADTModuleCallback
+#
+# Linux port of PSAppDeployToolkit. The help, attributes and parameter block
+# are taken verbatim from the original module; implementation: original (platform-neutral) code.
+#
+#-----------------------------------------------------------------------------
+function Clear-ADTModuleCallback
+{
+    <#
+    .SYNOPSIS
+        Clears the nominated hooking point of all callbacks.
+
+    .DESCRIPTION
+        The `Clear-ADTModuleCallback` function clears the nominated hooking point of all callbacks.
+
+    .PARAMETER Hookpoint
+        The callback hook point that you wish to clear.
+
+        Valid values for this parameter are:
+        * `OnInit`: The callback is executed before the module is initialized in `Initialize-ADTModule`.
+        * `OnStart`: The callback is executed before the first deployment session is opened.
+        * `PreOpen`: The callback is executed before a deployment session is opened.
+        * `PostOpen`: The callback is executed after a deployment session is opened.
+        * `OnLogEntry`: The callback is executed after a log entry has been written.
+        * `OnDefer`: The callback is executed when a user defers the active deployment.
+        * `PreClose`: The callback is executed before the deployment session is closed.
+        * `PostClose`: The callback is executed after the deployment session is closed.
+        * `OnFinish`: The callback is executed before the last deployment session is closed.
+        * `OnExit`: The callback is executed after the last deployment session is closed.
+
+        To see a list all the registered callbacks in order, use `Get-ADTModuleCallback`.
+
+    .INPUTS
+        None
+
+        You cannot pipe objects to this function.
+
+    .OUTPUTS
+        None
+
+        This function does not generate any output.
+
+    .EXAMPLE
+        Clear-ADTModuleCallback -Hookpoint PostOpen
+
+        Clears all callbacks to be invoked after a DeploymentSession has opened.
+
+    .NOTES
+        An active ADT session is NOT required to use this function.
+
+        Also see `Remove-ADTModuleCallback` about how callbacks can be removed.
+
+        Tags: psadt<br />
+        Website: https://psappdeploytoolkit.com<br />
+        Copyright: (C) 2026 PSAppDeployToolkit Team (Sean Lillis, Dan Cunningham, Muhammad Mashwani, Mitch Richters, Dan Gough).<br />
+        License: https://opensource.org/license/lgpl-3-0
+
+    .LINK
+        https://psappdeploytoolkit.com/docs/reference/functions/Clear-ADTModuleCallback
+
+    .LINK
+        https://github.com/PSAppDeployToolkit/PSAppDeployToolkit/blob/main/modules/PSAppDeployToolkit/Public/Clear-ADTModuleCallback.ps1
+    #>
+
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [PSAppDeployToolkit.Foundation.CallbackType]$Hookpoint
+    )
+
+    # Directly clear the backend list.
+    try
+    {
+        (Get-ADTModuleCallbacks).$Hookpoint.Clear()
+    }
+    catch
+    {
+        $PSCmdlet.ThrowTerminatingError($_)
+    }
+}

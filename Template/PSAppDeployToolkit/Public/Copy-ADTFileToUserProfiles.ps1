@@ -1,0 +1,290 @@
+#-----------------------------------------------------------------------------
+#
+# MARK: Copy-ADTFileToUserProfiles
+#
+# Linux port of PSAppDeployToolkit. The help, attributes and parameter block
+# are taken verbatim from the original module; implementation: original (platform-neutral) code.
+#
+#-----------------------------------------------------------------------------
+function Copy-ADTFileToUserProfiles
+{
+    <#
+    .SYNOPSIS
+        Copy one or more items to each user profile on the system.
+
+    .DESCRIPTION
+        The `Copy-ADTFileToUserProfiles` function copies one or more items to each user profile on the system. It supports various options such as recursion, flattening files, and using Robocopy to overcome the 260 character limit.
+
+    .PARAMETER Path
+        The path of the file or folder to copy.
+
+    .PARAMETER LiteralPath
+        The literal path of the file or folder to copy.
+
+    .PARAMETER Destination
+        The path of the destination folder to append to the root of the user profile.
+
+    .PARAMETER BasePath
+        The base path to append the destination folder to.
+
+    .PARAMETER Recurse
+        Copy files in subdirectories.
+
+    .PARAMETER Flatten
+        Flattens the files into the root destination directory.
+
+    .PARAMETER NoClobber
+        Prevents overwriting existing files at the destination. When specified, files that already exist at the destination path are skipped.
+
+    .PARAMETER ContinueFileCopyOnError
+        Continue copying files if an error is encountered. This will continue the deployment script and will warn about files that failed to be copied.
+
+    .PARAMETER FileCopyMode
+        Specifies whether to use the native `Copy-Item` cmdlet or Robocopy.exe when copying files. The default value for this parameter can be configured in the `config.psd1` file. Note: Robocopy supports the use of asterisk wildcards (`*`) in file names, but not folders, in source paths.
+
+    .PARAMETER RobocopyParams
+        Override the default Robocopy parameters.
+
+    .PARAMETER RobocopyAdditionalParams
+        Append to the default Robocopy parameters.
+
+    .PARAMETER UserProfiles
+        Specifies one or more UserProfileInfo objects to copy files into.
+
+    .PARAMETER ExcludeNTAccount
+        Specify NT account names in Domain\Username format to exclude from the list of user profiles.
+
+    .PARAMETER IncludeSystemProfiles
+        Include system profiles: SYSTEM, LOCAL SERVICE, NETWORK SERVICE.
+
+    .PARAMETER IncludeServiceProfiles
+        Include service profiles where NTAccount begins with NT SERVICE.
+
+    .PARAMETER ExcludeDefaultUser
+        Exclude the Default User.
+
+    .INPUTS
+        System.String[]
+
+        You can pipe in string values for the `-LiteralPath` parameter.
+
+    .OUTPUTS
+        None
+
+        This function does not generate any output.
+
+    .EXAMPLE
+        Copy-ADTFileToUserProfiles -Path "$($adtSession.DirSupportFiles)\config.txt" -Destination "AppData\Roaming\MyApp"
+
+        Copy a single file to `C:\Users\<UserName>\AppData\Roaming\MyApp` for each user.
+
+    .EXAMPLE
+        Copy-ADTFileToUserProfiles -Path "$($adtSession.DirSupportFiles)\config.txt","$($adtSession.DirSupportFiles)\config2.txt" -Destination "AppData\Roaming\MyApp"
+
+        Copy two files to `C:\Users\<UserName>\AppData\Roaming\MyApp` for each user.
+
+    .EXAMPLE
+        Copy-ADTFileToUserProfiles -Path "$($adtSession.DirFiles)\MyDocs" -Destination "MyApp" -BasePath "Documents" -Recurse
+
+        Copy an entire folder recursively to a new MyApp folder under each user's Documents folder.
+
+    .EXAMPLE
+        Copy-ADTFileToUserProfiles -Path "$($adtSession.DirFiles)\.appConfigFolder" -Recurse
+
+        Copy an entire folder to `C:\Users\<UserName>` for each user.
+
+    .EXAMPLE
+        Copy-ADTFileToUserProfiles -Path "$($adtSession.DirSupportFiles)\config.txt" -Destination "AppData\Roaming\MyApp" -UserProfiles (Get-ADTUserProfiles -ExcludeDefaultUser)
+
+        Copy a single file to `C:\Users\<UserName>\AppData\Roaming\MyApp` for each of the specified user profiles.
+
+    .NOTES
+        An active ADT session is NOT required to use this function.
+
+        This function supports the `-WhatIf` and `-Confirm` parameters for testing changes before applying them.
+
+        Tags: psadt<br />
+        Website: https://psappdeploytoolkit.com<br />
+        Copyright: (C) 2026 PSAppDeployToolkit Team (Sean Lillis, Dan Cunningham, Muhammad Mashwani, Mitch Richters, Dan Gough).<br />
+        License: https://opensource.org/license/lgpl-3-0
+
+    .LINK
+        https://psappdeploytoolkit.com/docs/reference/functions/Copy-ADTFileToUserProfiles
+
+    .LINK
+        https://github.com/PSAppDeployToolkit/PSAppDeployToolkit/blob/main/modules/PSAppDeployToolkit/Public/Copy-ADTFileToUserProfiles.ps1
+    #>
+
+    [CmdletBinding(SupportsShouldProcess = $true, DefaultParameterSetName = 'PathCalculatedProfiles')]
+    param (
+        [Parameter(Mandatory = $true, Position = 1, ParameterSetName = 'PathCalculatedProfiles')]
+        [Parameter(Mandatory = $true, Position = 1, ParameterSetName = 'PathSpecifiedProfiles')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [PSAppDeployToolkit.Attributes.ValidateUnique()]
+        [SupportsWildcards()]
+        [System.String[]]$Path,
+
+        [Parameter(Mandatory = $true, Position = 1, ParameterSetName = 'LiteralPathCalculatedProfiles', ValueFromPipeline = $true)]
+        [Parameter(Mandatory = $true, Position = 1, ParameterSetName = 'LiteralPathSpecifiedProfiles', ValueFromPipeline = $true)]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [PSAppDeployToolkit.Attributes.ValidateUnique()]
+        [System.String[]]$LiteralPath,
+
+        [Parameter(Mandatory = $false, Position = 2)]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String]$Destination,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('Profile', 'AppData', 'LocalAppData', 'Desktop', 'Documents', 'StartMenu', 'Temp', 'OneDrive', 'OneDriveCommercial')]
+        [System.String]$BasePath = 'Profile',
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$Recurse,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$Flatten,
+
+        [Parameter(Mandatory = $false)]
+        [System.Management.Automation.SwitchParameter]$NoClobber,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('Native', 'Robocopy')]
+        [System.String]$FileCopyMode,
+
+        [Parameter(Mandatory = $false)]
+        [System.String]$RobocopyParams,
+
+        [Parameter(Mandatory = $false)]
+        [System.String]$RobocopyAdditionalParams,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'PathSpecifiedProfiles')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'LiteralPathSpecifiedProfiles')]
+        [ValidateNotNullOrEmpty()]
+        [PSAppDeployToolkit.Attributes.ValidateUnique()]
+        [PSADT.AccountManagement.UserProfileInfo[]]$UserProfiles,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'PathCalculatedProfiles')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'LiteralPathCalculatedProfiles')]
+        [PSAppDeployToolkit.Attributes.ValidateNotNullOrWhiteSpace()]
+        [System.String[]]$ExcludeNTAccount,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'PathCalculatedProfiles')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'LiteralPathCalculatedProfiles')]
+        [ValidateNotNullOrEmpty()]
+        [System.Management.Automation.SwitchParameter]$IncludeSystemProfiles,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'PathCalculatedProfiles')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'LiteralPathCalculatedProfiles')]
+        [ValidateNotNullOrEmpty()]
+        [System.Management.Automation.SwitchParameter]$IncludeServiceProfiles,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'PathCalculatedProfiles')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'LiteralPathCalculatedProfiles')]
+        [ValidateNotNullOrEmpty()]
+        [System.Management.Automation.SwitchParameter]$ExcludeDefaultUser,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [System.Management.Automation.SwitchParameter]$ContinueFileCopyOnError
+    )
+
+    begin
+    {
+        # Initalize function.
+        Initialize-ADTFunction -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+        # Define default params for Copy-ADTFile.
+        $CopyFileSplat = @{
+            Recurse = $Recurse
+            Flatten = $Flatten
+            NoClobber = $NoClobber
+            ContinueFileCopyOnError = $ContinueFileCopyOnError
+        }
+        if ($PSBoundParameters.ContainsKey('FileCopyMode'))
+        {
+            $CopyFileSplat.FileCopyMode = $PSBoundParameters.FileCopyMode
+        }
+        if ($PSBoundParameters.ContainsKey('RobocopyParams'))
+        {
+            $CopyFileSplat.RobocopyParams = $PSBoundParameters.RobocopyParams
+        }
+        if ($PSBoundParameters.ContainsKey('RobocopyAdditionalParams'))
+        {
+            $CopyFileSplat.RobocopyAdditionalParams = $PSBoundParameters.RobocopyAdditionalParams
+        }
+        if ($PSBoundParameters.ContainsKey('ErrorAction'))
+        {
+            $CopyFileSplat.ErrorAction = $PSBoundParameters.ErrorAction
+        }
+
+        # Define default params for Get-ADTUserProfiles.
+        $GetUserProfileSplat = @{
+            IncludeSystemProfiles = $IncludeSystemProfiles
+            IncludeServiceProfiles = $IncludeServiceProfiles
+            ExcludeDefaultUser = $ExcludeDefaultUser
+        }
+        if ($ExcludeNTAccount)
+        {
+            $GetUserProfileSplat.ExcludeNTAccount = $ExcludeNTAccount
+        }
+        if ($BasePath -ne 'Profile')
+        {
+            # Only the shell folder paths need loading, ProfilePath is always populated.
+            $GetUserProfileSplat.LoadProfilePaths = $true
+        }
+
+        # Collector for all provided paths, plus the source variable as its name differs between parameter sets.
+        $sourcePaths = [System.Collections.Generic.List[System.String]]::new()
+        $sourceVar = Get-Variable -Name $(if ($PSCmdlet.ParameterSetName.StartsWith('LiteralPath')) { 'LiteralPath' } else { 'Path' })
+    }
+
+    process
+    {
+        # Add all source paths to the collection.
+        $sourcePaths.AddRange($sourceVar.Value)
+    }
+
+    end
+    {
+        # Copy all paths to the specified destination.
+        foreach ($UserProfile in $(if ($PSCmdlet.ParameterSetName.EndsWith('CalculatedProfiles')) { Get-ADTUserProfiles @GetUserProfileSplat } else { $UserProfiles }))
+        {
+            if (!$UserProfile."$($BasePath)Path")
+            {
+                Write-ADTLogEntry -Message "Skipping user profile [$($UserProfile.NTAccount)] as path [$($BasePath)Path] is not available."
+                continue
+            }
+            $dest = if ($PSBoundParameters.ContainsKey('Destination'))
+            {
+                (Join-Path -Path $UserProfile."$($BasePath)Path".FullName -ChildPath $Destination).Trim()
+            }
+            else
+            {
+                $UserProfile."$($BasePath)Path".FullName
+            }
+            Write-ADTLogEntry -Message "Copying path [$sourcePaths] to $dest."
+            if ($PSCmdlet.ShouldProcess($dest, "Copy files from [$sourcePaths] to user profile [$($UserProfile.NTAccount)]"))
+            {
+                Copy-ADTFile -Path $sourcePaths -Destination $dest @CopyFileSplat
+                # Linux: hand ownership of the copied content to the profile owner when running as root.
+                if ([PSADT.AccountManagement.AccountUtilities]::CallerIsAdmin -and ($null -ne $UserProfile.NTAccount.Id) -and ($UserProfile.NTAccount.Id -ne 0))
+                {
+                    foreach ($sourcePath in $sourcePaths)
+                    {
+                        foreach ($item in (Get-Item -Path $sourcePath -Force -ErrorAction Ignore))
+                        {
+                            $copied = if ($Flatten -or !(Test-Path -LiteralPath $dest -PathType Container)) { $dest } else { Join-Path -Path $dest -ChildPath $item.Name }
+                            if (Test-Path -LiteralPath $copied)
+                            {
+                                $null = Invoke-ADTNativeCommand -FilePath chown -ArgumentList '-R', "$($UserProfile.NTAccount.Value):", '--', $copied
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        # Finalize function.
+        Complete-ADTFunction -Cmdlet $PSCmdlet
+    }
+}
